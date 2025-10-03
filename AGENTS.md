@@ -1,6 +1,20 @@
 # Agent Playbook
 
+Always read `SPEC.md` before authoring or updating agents. Treat it as the source of truth for architectural, billing, and deployment requirements.
+
 This document explains how to build and operate agents inside the stringcost framework. Use it as the canonical reference for instrumenting agent logic, wiring MCP tools, and deploying compute surfaces that honor observability and billing guarantees.
+
+## Implementation Plan
+
+Follow this sequence whenever you introduce or modify an agent. Each stage assumes you have read `SPEC.md` and the current product roadmap notes in `GEMINI.md`.
+
+1. **Scope & Requirements** – Confirm the user journey, success criteria, and billing knobs from `SPEC.md`. Identify the reasoning pattern (single-shot, tree-of-thought, tool-augmented, etc.) and list every external capability the agent will need.
+2. **Design the Step Graph** – Sketch the agent as a series of `step` calls: outline thought branches, tool invocations, evaluations, and synthesis passes. Decide on `actionType`, `unitCost`, and any custom metrics you must emit per step.
+3. **Implement Agent Logic** – Start from `lib/framework.ts` primitives. Build the agent as a plain async function, cloning patterns from `agents/coffee-name-agent.ts` when you need branching or iterative reasoning. Keep control flow readable and ensure each logical action lives inside a `step`.
+4. **Integrate External Tools** – Register required MCP servers via `McpRegistry`, construct helpers with `createMcpTool`, and propagate trace headers (`X-Parent-Trace-Id`). For Vercel AI SDK usage, bind provider clients locally and wrap all model calls in steps.
+5. **Instrument Billing & Metrics** – Populate `unitCost` and any dynamic pricing data on every step. Run local scenarios (e.g., varying `branches` counts in `index.ts`) to confirm `BillingManager.generateInvoice()` reflects the intended scaling model.
+6. **Harden & Document** – Add guardrails inside steps, surface errors clearly, and update inline comments sparingly where logic is non-obvious. Record new capabilities or expectations back in `SPEC.md` and, if relevant, extend this playbook.
+7. **Package & Deploy** – Execute `node build.js`, verify generated `.vercel/output` routes, and run smoke tests (Express harness or other) before deploying with `vercel deploy --prebuilt`. Monitor traces and invoices in staging, then promote to production.
 
 ## Core Concepts
 
