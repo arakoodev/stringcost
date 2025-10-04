@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "buildCommand": "node build.js",
+  "outputDirectory": ".vercel/output",
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" }
+  ]
+}

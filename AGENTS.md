@@ -6,15 +6,55 @@ This document explains how to build and operate agents inside the stringcost fra
 
 ## Implementation Plan
 
-Follow this sequence whenever you introduce or modify an agent. Each stage assumes you have read `SPEC.md` and the current product roadmap notes in `GEMINI.md`.
+Use plan-mode to manage execution: create a plan that at minimum tracks the active phase, current deliverables, and validation checkpoints before you start coding. Keep `SPEC.md` and `GEMINI.md` open while you work, and update the plan as you finish each subtask.
 
-1. **Scope & Requirements** – Confirm the user journey, success criteria, and billing knobs from `SPEC.md`. Identify the reasoning pattern (single-shot, tree-of-thought, tool-augmented, etc.) and list every external capability the agent will need.
-2. **Design the Step Graph** – Sketch the agent as a series of `step` calls: outline thought branches, tool invocations, evaluations, and synthesis passes. Decide on `actionType`, `unitCost`, and any custom metrics you must emit per step.
-3. **Implement Agent Logic** – Start from `lib/framework.ts` primitives. Build the agent as a plain async function, cloning patterns from `agents/coffee-name-agent.ts` when you need branching or iterative reasoning. Keep control flow readable and ensure each logical action lives inside a `step`.
-4. **Integrate External Tools** – Register required MCP servers via `McpRegistry`, construct helpers with `createMcpTool`, and propagate trace headers (`X-Parent-Trace-Id`). For Vercel AI SDK usage, bind provider clients locally and wrap all model calls in steps.
-5. **Instrument Billing & Metrics** – Populate `unitCost` and any dynamic pricing data on every step. Run local scenarios (e.g., varying `branches` counts in `index.ts`) to confirm `BillingManager.generateInvoice()` reflects the intended scaling model.
-6. **Harden & Document** – Add guardrails inside steps, surface errors clearly, and update inline comments sparingly where logic is non-obvious. Record new capabilities or expectations back in `SPEC.md` and, if relevant, extend this playbook.
-7. **Package & Deploy** – Execute `node build.js`, verify generated `.vercel/output` routes, and run smoke tests (Express harness or other) before deploying with `vercel deploy --prebuilt`. Monitor traces and invoices in staging, then promote to production.
+### Phase 0 – Intake & Alignment
+- **Objective:** Align on the problem statement, monetization targets, and impacted systems.
+- **Primary Tasks:** Review `SPEC.md`, `GEMINI.md`, tickets, and stakeholder notes; document assumptions, dependencies, and affected surfaces; schedule design/product syncs if scope is ambiguous.
+- **Deliverables:** Shared understanding of goals, risks, and billing levers captured in planning notes; updated plan-mode items covering downstream phases.
+- **Exit Criteria:** Stakeholders agree on scope, KPIs, billing expectations, and delivery timeline.
+
+### Phase 1 – Step Graph Architecture
+- **Objective:** Translate requirements into an explicit reasoning and billing topology.
+- **Primary Tasks:** Enumerate thoughts, tool uses, loops, and synthesis actions; define every `step` boundary, `actionType`, metadata (`unitCost`, token metrics, timers); map external interactions and required headers (`X-Parent-Trace-Id`).
+- **Deliverables:** Reviewed diagram or document of the step graph; billing model per step; integration contracts for MCP servers and LLM providers.
+- **Exit Criteria:** Architecture sign-off covering reasoning flow, observability nodes, and pricing hooks.
+
+### Phase 2 – Tooling & Infrastructure Readiness
+- **Objective:** Ensure supporting services, secrets, and build outputs can support the agent.
+- **Primary Tasks:** Register/update MCP servers in `McpRegistry`; provision or mock new MCP handlers; verify Vercel AI SDK provider bindings, quotas, secrets; plan required `build.js` updates, routes, and cron schedules.
+- **Deliverables:** Tooling endpoints reachable in development; documented environment variables; infra changes queued/approved.
+- **Exit Criteria:** All external dependencies callable in dev/staging and reflected in the plan-mode tracker.
+
+### Phase 3 – Agent Implementation
+- **Objective:** Build the agent against framework primitives with readable control flow.
+- **Primary Tasks:** Implement the async agent via `createAgent`; wrap each logical action in `step` according to the architecture; wire MCP helpers with `createMcpTool` and propagate trace headers; keep branching logic explicit (e.g., loops for tree-of-thought).
+- **Deliverables:** Compiling agent module with exhaustive step coverage; minimal, purposeful inline comments; updated tests or harness placeholders.
+- **Exit Criteria:** Code review-ready implementation with all planned steps present and names/types correct.
+
+### Phase 4 – Billing & Telemetry Instrumentation
+- **Objective:** Verify that metering and observability match the reasoning graph.
+- **Primary Tasks:** Set `unitCost`, calculators, and custom metrics on each step; extend `BillingManager` if tiering or partner splits are needed; run scenario scripts (e.g., varying `branches` in `agents/coffee-name-agent.ts`) to confirm invoice scaling.
+- **Deliverables:** Logs demonstrating trace IDs and billing events per step; sample invoices from `BillingManager.generateInvoice()`; updated dashboards or queries if applicable.
+- **Exit Criteria:** Billing totals match forecasts, and observability tooling displays the new step graph without gaps.
+
+### Phase 5 – Validation & Hardening
+- **Objective:** Prove resilience for success and failure paths before shipping.
+- **Primary Tasks:** Add focused unit/integration tests; exercise error cases (MCP outages, LLM timeouts, bad inputs) inside wrapped steps; perform peer reviews; capture refinements in `SPEC.md`.
+- **Deliverables:** Passing test suite; documented failure handling; review feedback addressed.
+- **Exit Criteria:** Quality bar met, sign-offs recorded, and plan-mode reflects readiness for packaging.
+
+### Phase 6 – Packaging & Deployment
+- **Objective:** Produce deployable artifacts and verify routing/build details.
+- **Primary Tasks:** Run `node build.js`; inspect `.vercel/output` for expected function directories/configs; execute local smoke tests (Express harness hitting `.vercel/output/functions/*`); update `vercel.json` routes and crons; deploy with `vercel deploy --prebuilt` and monitor logs.
+- **Deliverables:** Verified build output, documented deployment notes, updated environment configurations.
+- **Exit Criteria:** Successful staging release with validated traces, invoices, and release checklist completed.
+
+### Phase 7 – Post-Deployment Monitoring & Iteration
+- **Objective:** Ensure production health and capture learnings for the roadmap.
+- **Primary Tasks:** Monitor traces, billing totals, KPIs, and alerts; gather user feedback and analytics; log retro items for debt (refactors, test gaps, performance tuning).
+- **Deliverables:** Monitoring dashboards or alert configs; retrospective notes; backlog tickets for follow-up work.
+- **Exit Criteria:** Production run is stable, billing reconciles with forecasts, learnings documented, and plan-mode closed out.
 
 ## Core Concepts
 
@@ -55,7 +95,7 @@ Follow this sequence whenever you introduce or modify an agent. Each stage assum
 Run `index.ts` twice—once with `branches: 3` and again with `branches: 5`.
 
 - Each additional branch triggers another evaluation `step`, adding `$0.0010` (or whatever `unitCost` you set) to the invoice.
-- The generated invoice shows the per-step line items followed by a total (for example, `$0.0080` for 3 branches vs. `$0.0100` for 5 branches).
+- The generated invoice shows the per-step line items followed by a total (for example, `$0.0080` for 3 branches vs. $0.0100 for 5 branches).
 - This proves that billing is elastic by design: change the loop bounds or add new `step` types and the invoice automatically reflects the expanded work.
 
 ## Working With MCP Tools
@@ -73,7 +113,7 @@ Run `index.ts` twice—once with `branches: 3` and again with `branches: 5`.
 - WebSocket sources (`src/websocket/**/*.ws.ts`) are wrapped into HTTP shims that expose REST endpoints and forward events to user-defined `onMessage` handlers.
 - Cron sources (`src/cron/**/*.cron.ts`) are packaged with bearer-auth guards and long execution windows; pair them with `vercel.json.crons` schedules.
 - Optional Next.js apps are built separately (`next build`) and copied into the same output tree so static assets and pages deploy alongside custom functions.
-- `vercel.json` must point to the prebuilt output (`"buildCommand": "node build.js"`, `"outputDirectory": ".vercel/output"`) and declare cron schedules.
+- `vercel.json` must point to the prebuilt output ("buildCommand": "node build.js", "outputDirectory": ".vercel/output") and declare cron schedules.
 - Use `vercel deploy --prebuilt` to upload the generated output without re-running the build in Vercel.
 - For local smoke tests, require the bundled function entrypoints from `.vercel/output/functions/*` inside an Express harness (see `test-local.js`).
 
