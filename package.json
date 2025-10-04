@@ -38,7 +38,7 @@
     "esbuild": "^0.25.10",
     "fast-glob": "^3.3.3",
     "source-map": "^0.7.4",
-    "tsup": "^7.2.0",
+    "tsup": "^8.3.5",
     "typescript": "^5.4.0"
   }
 }
