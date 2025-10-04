@@ -2,8 +2,6 @@
 import { Command } from 'commander';
 import fs from 'fs-extra';
 import { glob } from 'glob';
-import kleur from 'kleur';
-import ora from 'ora';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { execa } from 'execa';
@@ -30,7 +28,7 @@ async function main() {
 
   await ensureWritableDirectory(projectDir);
 
-  const spinner = ora('Scaffolding stringcost project').start();
+  console.log('Scaffolding stringcost project...');
 
   try {
     const templateDir = resolveTemplateDir(options.template);
@@ -38,29 +36,27 @@ async function main() {
 
     await processTemplateFiles(projectDir, projectName);
 
-    spinner.succeed('Project files generated');
+    console.log('✅ Project files generated');
 
     if (options.install) {
       await runInstall(projectDir);
     } else {
       console.log(
-        kleur.yellow(
-          '\nDependencies not installed. Run `npm install` (or your preferred package manager) inside the project folder when ready.'
-        )
+        '\nDependencies not installed. Run `npm install` (or your preferred package manager) inside the project folder when ready.'
       );
     }
 
     console.log('\nNext steps:');
-    console.log(`  ${kleur.cyan('cd')} ${kleur.bold(projectName)}`);
+    console.log(`  cd ${projectName}`);
     if (!options.install) {
-      console.log(`  ${kleur.cyan('npm install')}`);
+      console.log('  npm install');
     }
-    console.log(`  ${kleur.cyan('npm run dev')}  # start Next.js dev server`);
+    console.log('  npm run dev  # start Next.js dev server');
     console.log(`\nBuild for Vercel:`);
-    console.log(`  ${kleur.cyan('node build.js')}`);
-    console.log(`  ${kleur.cyan('vercel deploy --prebuilt')}  # when ready`);
+    console.log('  node build.js');
+    console.log('  vercel deploy --prebuilt  # when ready');
   } catch (error) {
-    spinner.fail('Failed to scaffold project');
+    console.error('❌ Failed to scaffold project');
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;
   }
@@ -106,15 +102,15 @@ async function processTemplateFiles(projectDir: string, projectName: string) {
 }
 
 async function runInstall(projectDir: string) {
-  const spinner = ora('Installing dependencies').start();
+  console.log('Installing dependencies...');
   try {
     await execa('npm', ['install'], {
       cwd: projectDir,
       stdio: 'inherit',
     });
-    spinner.succeed('Dependencies installed');
+    console.log('✅ Dependencies installed');
   } catch (error) {
-    spinner.fail('Dependency installation failed');
+    console.error('❌ Dependency installation failed');
     throw error;
   }
 }

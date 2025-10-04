@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces",
-    "test": "npm run test --workspaces",
+    "test": "npm run test --workspaces && node --test tests/smoke/cli-smoke.test.js",
     "lint": "npm run lint --if-present --workspaces",
     "dev:web": "npm run dev --workspace web"
   },
