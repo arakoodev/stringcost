@@ -131,3 +131,78 @@ test('coffee agent invoice total scales with additional branches', async () => {
 
   assert.ok(runFive.invoice.total > runThree.invoice.total);
 });
+
+test('tree-of-thought agent bills each branch expansion and evaluation', async () => {
+  const thoughtAgent = createAgent(
+    'treeOfThought',
+    async (step, input) => {
+      const roots = await step(
+        {
+          name: 'Generate Root Thoughts',
+          actionType: 'llm_call',
+          unitCost: 0.002,
+          metadata: { depth: 0 },
+        },
+        async (runtime) => {
+          runtime.setQuantity(input.branches);
+          const thoughts = Array.from({ length: input.branches }, (_, index) => `Thought-${index + 1}`);
+          runtime.recordMetadata({ nodes: thoughts.length });
+          return thoughts;
+        }
+      );
+
+      for (const root of roots) {
+        await step(
+          {
+            name: `Expand ${root}`,
+            actionType: 'llm_call',
+            unitCost: 0.001,
+            metadata: { parent: root },
+          },
+          async (runtime) => {
+            runtime.setQuantity(input.depth);
+            runtime.recordMetadata({ childrenCount: input.depth });
+            return Array.from({ length: input.depth }, (_, index) => `${root}.${index + 1}`);
+          }
+        );
+
+        await step(
+          {
+            name: `Evaluate ${root}`,
+            actionType: 'evaluation',
+            unitCost: 0.0005,
+            metadata: { root },
+          },
+          async (runtime) => {
+            runtime.recordMetadata({ score: 0.85 });
+          }
+        );
+      }
+
+      await step(
+        {
+          name: 'Select Best Thought',
+          actionType: 'synthesis',
+          unitCost: 0.002,
+        },
+        async () => roots[0]
+      );
+
+      return roots[0];
+    }
+  );
+
+  const run = await thoughtAgent.invoke({ depth: 2, branches: 3 });
+
+  assert.equal(run.output, 'Thought-1');
+  assert.equal(run.invoice.lineItems.length, 1 + 3 * 2 + 1); // root + (expand/evaluate per branch) + final selection
+  const rootLine = run.invoice.lineItems.find((item) => item.stepName === 'Generate Root Thoughts');
+  assert.equal(rootLine.quantity, 3);
+  const expansionLines = run.invoice.lineItems.filter((item) => item.stepName.startsWith('Expand '));
+  assert.equal(expansionLines.length, 3);
+  for (const line of expansionLines) {
+    assert.equal(line.quantity, 2);
+    assert.equal(line.metadata.childrenCount, 2);
+  }
+  assert.equal(run.invoice.total.toFixed(4), '0.0155');
+});
