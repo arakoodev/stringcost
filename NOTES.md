@@ -50,7 +50,7 @@
 # Phase 4 – Billing & Telemetry Notes
 - Agent instrumentation mirrors the prior design; billing metadata (token counts, duplicates, MCP headers) surfaces through API responses.
 - Next.js route handler returns `{ output, invoice, traceId }` to keep invoices visible in the UI and CLI-generated projects.
-- `build.js` currently warns if `.next/standalone` is missing—follow-up required to finalize bundling of server output + MCP functions.
+- `build.js` now bundles the Coffee agent API with `esbuild` and serves static assets from `apps/web/public`; MCP function bundling remains TODO.
 
 # Phase 5 – Validation & Hardening
 - Framework tests run via Node’s built-in test runner (`node --test`) against compiled bundles (`tests/billing.test.js`).
@@ -60,9 +60,9 @@
   - End-to-end test hitting the Next.js API route (supertest or Playwright) once server/test harness is ready.
 
 # Phase 6 – Packaging & Deployment
-- Root `build.js` calls `npm run build --workspace web`, prepares `.vercel/output/config.json`, and stubs function/static copying (MCP bundling pending).
+- Root `build.js` runs the web workspace build (for developer parity), bundles `apps/web/server/coffee-handler.ts` into `.vercel/output/functions/api/agents/coffee.func`, and copies static assets.
 - `vercel.json` points to the custom build command and sets the output directory for prebuilt deployments.
-- TODO: enrich build to copy `.next/standalone` artifacts and package MCP handlers when they exist.
+- TODO: enrich the build step to package MCP handlers and, if desired, integrate real Next.js standalone output when it becomes available.
 
 # Phase 7 – Monitoring & Follow-ups
 - Backlog items:

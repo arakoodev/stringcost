@@ -35,6 +35,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
+    "esbuild": "^0.25.10",
     "fast-glob": "^3.3.3",
     "source-map": "^0.7.4",
     "tsup": "^7.2.0",

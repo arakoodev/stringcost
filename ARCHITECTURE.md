@@ -31,10 +31,11 @@
 
 4. **Custom Build Pipeline**
    - `build.js` currently:
-     1. Executes `npm run build` inside `apps/web` (Next.js build).
-     2. Creates `.vercel/output`, copying `.next/standalone` + `.next/static` when present.
-     3. Writes baseline `config.json` and `.vc-config.json`; emits TODO warnings when directories are missing.
-   - Next iteration will add MCP bundling and full Build Output manifest generation.
+     1. Executes `npm run build` inside `apps/web` (optional; helpful for local Next workflows).
+     2. Bundles a Node serverless handler (`apps/web/server/coffee-handler.ts`) into `.vercel/output/functions/api/agents/coffee.func` via `esbuild`.
+     3. Copies static assets from `apps/web/public` into `.vercel/output/static`.
+     4. Writes baseline `config.json` and `.vc-config.json` entries.
+   - Next iteration will extend bundling to MCP handlers and integrate Next-generated assets when available.
 
 5. **Billing & Observability**
    - Every API invocation triggers `BillingManager.generateInvoice()`; invoices are returned to clients and logged.

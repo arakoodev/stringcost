@@ -9,12 +9,16 @@ npm install
 npm run dev
 ```
 
-The demo UI is available at `http://localhost:3000`. The coffee-name agent lives under `app/api/agents/coffee/route.ts` and illustrates how to wire `@stringcost/framework` inside Next.js.
+The demo UI is available at `http://localhost:3000`. It posts to `/api/agents/coffee`, which uses `@stringcost/framework` primitives to run the sample agent and return an invoice of billable steps.
 
-## Building for Vercel
+## Building for Vercel Build Output API
 
 ```bash
 node build.js
 ```
 
-This will run `next build` and prepare the `.vercel/output` directory. The script currently outputs TODO notices for wiring the Build Output API; adapt it to your deployment strategy.
+This command compiles the project into `.vercel/output/`, bundling the serverless API handler with `esbuild` and copying static assets. Deploy with:
+
+```bash
+vercel deploy --prebuilt
+```

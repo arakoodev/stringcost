@@ -18,6 +18,7 @@
     "@types/node": "^20.11.30",
     "@types/react": "^18.2.79",
     "@types/react-dom": "^18.2.25",
+    "esbuild": "^0.23.0",
     "typescript": "^5.4.0"
   }
 }

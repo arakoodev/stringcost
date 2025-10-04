@@ -1,6 +1,4 @@
-'use client';
-
-import { useState } from 'react';
+import { FormEvent, useState } from 'react';
 
 type InvoiceLine = {
   stepName: string;
@@ -25,7 +23,8 @@ export default function HomePage() {
   const [result, setResult] = useState<AgentResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const runAgent = async () => {
+  const runAgent = async (event: FormEvent) => {
+    event.preventDefault();
     setIsLoading(true);
     setError(null);
 
@@ -55,11 +54,11 @@ export default function HomePage() {
     <main>
       <h1>stringcost × Next.js</h1>
       <p>
-        This starter runs <code>coffeeNameAgent</code> inside a Next.js route handler
-        and returns a detailed invoice for every billable step.
+        This demo runs the <code>coffeeNameAgent</code> inside a Next.js API route and
+        returns a detailed invoice for every billable step.
       </p>
 
-      <section>
+      <form onSubmit={runAgent}>
         <label htmlFor="prompt">Prompt</label>
         <textarea
           id="prompt"
@@ -68,10 +67,10 @@ export default function HomePage() {
           rows={4}
           style={{ width: '100%', marginBlock: '0.5rem 1rem' }}
         />
-        <button type="button" onClick={runAgent} disabled={isLoading}>
+        <button type="submit" disabled={isLoading}>
           {isLoading ? 'Running…' : 'Run coffeeNameAgent'}
         </button>
-      </section>
+      </form>
 
       {error ? (
         <p style={{ color: '#f87171' }}>{error}</p>
